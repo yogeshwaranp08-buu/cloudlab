@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student App - Google Login</title>
+</head>
+<body>
+    <h2>Student Registration App</h2>
+
+    <button id="login">Sign in with Google</button>
+    <button id="logout">Sign Out</button>
+
+    <p id="message">Please sign in.</p>
+
+    <hr>
+
+    <h3>Student Details</h3>
+
+    <input type="text" id="name" placeholder="Student Name"><br><br>
+    <input type="text" id="department" placeholder="Department"><br><br>
+
+    <button id="save">Save Details</button>
+    <button id="load">Load Details</button>
+
+    <pre id="details"></pre>
+
+    <script type="module">
+        import { initializeApp } from
+            "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+
+        import {
+            getAuth,
+            GoogleAuthProvider,
+            signInWithPopup,
+            signOut,
+            onAuthStateChanged
+        } from
+            "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
+        import {
+            getFirestore,
+            doc,
+            setDoc,
+            getDoc
+        } from
+            "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+        // Replace with your Firebase project configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyB4C9kuSoW6X7DqkbPEvNlWWB9RQB6EIRM",
+  authDomain: "cloudlab-17e12.firebaseapp.com",
+  projectId: "cloudlab-17e12",
+  storageBucket: "cloudlab-17e12.firebasestorage.app",
+  messagingSenderId: "317869657472",
+  appId: "1:317869657472:web:d195ffcc73790bbaa94565",
+  measurementId: "G-1H5GH8L2TN"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        const message = document.getElementById("message");
+        const details = document.getElementById("details");
+
+        // Google sign-in
+        document.getElementById("login").onclick = async () => {
+            try {
+                await signInWithPopup(auth, provider);
+                message.textContent = "Google sign-in successful!";
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        };
+
+        // Sign out
+        document.getElementById("logout").onclick = async () => {
+            try {
+                await signOut(auth);
+                message.textContent = "Signed out successfully.";
+                details.textContent = "";
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        };
+
+        // Save student details
+        document.getElementById("save").onclick = async () => {
+            const user = auth.currentUser;
+
+            if (!user) {
+                message.textContent = "Please sign in with Google first.";
+                return;
+            }
+
+            const name = document.getElementById("name").value.trim();
+            const department =
+                document.getElementById("department").value.trim();
+
+            if (!name || !department) {
+                message.textContent = "Enter name and department.";
+                return;
+            }
+
+            try {
+                await setDoc(doc(db, "students", user.uid), {
+                    name: name,
+                    department: department,
+                    email: user.email
+                });
+
+                message.textContent = "Student details saved!";
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        };
+
+        // Load student details
+        document.getElementById("load").onclick = async () => {
+            const user = auth.currentUser;
+
+            if (!user) {
+                message.textContent = "Please sign in first.";
+                return;
+            }
+
+            try {
+                const snapshot =
+                    await getDoc(doc(db, "students", user.uid));
+
+                if (snapshot.exists()) {
+                    const student = snapshot.data();
+
+                    document.getElementById("name").value = student.name;
+                    document.getElementById("department").value =
+                        student.department;
+
+                    details.textContent =
+                        "Name: " + student.name +
+                        "\nDepartment: " + student.department +
+                        "\nEmail: " + student.email;
+                } else {
+                    details.textContent = "No student details found.";
+                }
+            } catch (error) {
+                message.textContent = error.message;
+            }
+        };
+
+        // Monitor login state
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                message.textContent =
+                    "Signed in as: " + user.displayName +
+                    " (" + user.email + ")";
+            } else {
+                message.textContent = "Please sign in with Google.";
+                details.textContent = "";
+            }
+        });
+    </script>
+</body>
+</html>

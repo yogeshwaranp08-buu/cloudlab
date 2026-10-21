@@ -1,0 +1,167 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Management</title>
+</head>
+<body>
+    <h2>Student Management System</h2>
+
+    <input type="hidden" id="id">
+
+    <input type="text" id="name" placeholder="Student Name">
+    <input type="text" id="department" placeholder="Department">
+    <input type="number" id="age" placeholder="Age">
+
+    <button onclick="saveStudent()">Add Student</button>
+    <button onclick="updateStudent()">Update Student</button>
+    <button onclick="clearForm()">Clear</button>
+
+    <p id="message"></p>
+
+    <h3>Student Records</h3>
+    <button onclick="loadStudents()">Refresh Records</button>
+
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Age</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody id="studentList"></tbody>
+    </table>
+
+    <script>
+        const api = "/api/students";
+
+        async function loadStudents() {
+            const response = await fetch(api);
+            const students = await response.json();
+
+            const list = document.getElementById("studentList");
+            list.replaceChildren();
+
+            students.forEach(student => {
+                const row = document.createElement("tr");
+
+                [student.name, student.department, student.age]
+                    .forEach(value => {
+                        const cell = document.createElement("td");
+                        cell.textContent = value;
+                        row.appendChild(cell);
+                    });
+
+                const actions = document.createElement("td");
+
+                const edit = document.createElement("button");
+                edit.textContent = "Edit";
+                edit.onclick = () => {
+                    document.getElementById("id").value = student._id;
+                    document.getElementById("name").value = student.name;
+                    document.getElementById("department").value =
+                        student.department;
+                    document.getElementById("age").value = student.age;
+                };
+
+                const del = document.createElement("button");
+                del.textContent = "Delete";
+                del.onclick = () => deleteStudent(student._id);
+
+                actions.append(edit, del);
+                row.appendChild(actions);
+                list.appendChild(row);
+            });
+        }
+
+        async function saveStudent() {
+            const student = getFormData();
+
+            try {
+                const response = await fetch(api, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(student)
+                });
+
+                const data = await response.json();
+                document.getElementById("message").textContent =
+                    data.message || "Request failed";
+
+                if (response.ok) {
+                    clearForm();
+                    loadStudents();
+                }
+            } catch (error) {
+                document.getElementById("message").textContent = error.message;
+            }
+        }
+
+        async function updateStudent() {
+            const id = document.getElementById("id").value;
+
+            if (!id) {
+                alert("Click Edit on a student record first.");
+                return;
+            }
+
+            try {
+                const response = await fetch(`${api}/${id}`, {
+                    method: "PUT",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(getFormData())
+                });
+
+                const data = await response.json();
+                document.getElementById("message").textContent = data.message;
+
+                if (response.ok) {
+                    clearForm();
+                    loadStudents();
+                }
+            } catch (error) {
+                document.getElementById("message").textContent = error.message;
+            }
+        }
+
+        async function deleteStudent(id) {
+            if (!confirm("Delete this student?")) return;
+
+            try {
+                const response = await fetch(`${api}/${id}`, {
+                    method: "DELETE"
+                });
+
+                const data = await response.json();
+                document.getElementById("message").textContent = data.message;
+
+                if (response.ok) {
+                    clearForm();
+                    loadStudents();
+                }
+            } catch (error) {
+                document.getElementById("message").textContent = error.message;
+            }
+        }
+
+        function getFormData() {
+            return {
+                name: document.getElementById("name").value,
+                department: document.getElementById("department").value,
+                age: Number(document.getElementById("age").value)
+            };
+        }
+
+        function clearForm() {
+            document.getElementById("id").value = "";
+            document.getElementById("name").value = "";
+            document.getElementById("department").value = "";
+            document.getElementById("age").value = "";
+        }
+
+        loadStudents();
+    </script>
+</body>
+</html>

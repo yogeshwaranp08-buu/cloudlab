@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dropbox File Storage</title>
+</head>
+<body>
+    <h2>Dropbox File Storage Application</h2>
+
+    <input type="file" id="fileInput">
+    <button onclick="uploadFile()">Upload File</button>
+
+    <p id="message"></p>
+
+    <h3>Files in Dropbox</h3>
+    <button onclick="listFiles()">View Files</button>
+
+    <ul id="fileList"></ul>
+
+    <script>
+        const TOKEN = "YOUR_DROPBOX_ACCESS_TOKEN";
+
+        // Upload an actual file to Dropbox
+        async function uploadFile() {
+            const file = document.getElementById("fileInput").files[0];
+            const message = document.getElementById("message");
+
+            if (!file) {
+                message.textContent = "Please select a file.";
+                return;
+            }
+
+            message.textContent = "Uploading file...";
+
+            try {
+                const response = await fetch(
+                    "https://content.dropboxapi.com/2/files/upload",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Authorization": "Bearer " + TOKEN,
+                            "Dropbox-API-Arg": JSON.stringify({
+                                path: "/" + file.name,
+                                mode: "add",
+                                autorename: true,
+                                mute: false
+                            }),
+                            "Content-Type": "application/octet-stream"
+                        },
+                        body: file
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error_summary || "Upload failed");
+                }
+
+                message.textContent =
+                    "File uploaded successfully: " + data.name;
+
+                listFiles();
+
+            } catch (error) {
+                message.textContent = "Error: " + error.message;
+            }
+        }
+
+        // Display actual files stored in Dropbox
+        async function listFiles() {
+            const fileList = document.getElementById("fileList");
+            fileList.replaceChildren();
+
+            try {
+                const response = await fetch(
+                    "https://api.dropboxapi.com/2/files/list_folder",
+                    {
+                        method: "POST",
+                        headers: {
+                            "Authorization": "Bearer " + TOKEN,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            path: "",
+                            recursive: false
+                        })
+                    }
+                );
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error_summary || "Unable to list files");
+                }
+
+                if (data.entries.length === 0) {
+                    fileList.textContent = "No files found.";
+                    return;
+                }
+
+                data.entries.forEach(file => {
+                    const item = document.createElement("li");
+                    item.textContent = file.name + " (" + file[".tag"] + ")";
+                    fileList.appendChild(item);
+                });
+
+            } catch (error) {
+                fileList.textContent = error.message;
+            }
+        }
+    </script>
+</body>
+</html>
